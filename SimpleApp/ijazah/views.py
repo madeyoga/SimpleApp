@@ -3,13 +3,15 @@ from django.http import HttpResponse
 from django.core.files.storage import FileSystemStorage
 from django.conf import settings
 
-from .helper import decode_file, crop, segment, numpy_to_djfile, segment_char
+from .helper import decode_file, crop, segment, numpy_to_djfile, segment_char,recognize_text
+from .helper import segment_word
 from ijazahpy.pretrained import CharacterRecognizer, TextRecognizer
-from ijazahpy.preprocessing import crop_ijazah
+from ijazahpy.preprocessing import crop_ijazah, remove_noise_bin, prepare_for_tr
 import json
 
 char_recognizer = CharacterRecognizer()
 text_recognizer = TextRecognizer()
+
 # Create your views here.
 def index(request):
     if request.method == 'POST' and request.FILES['gambar']:
@@ -37,20 +39,20 @@ def index(request):
 def recognize(request):
     url = request.GET['url']
     method = request.GET['method']
-    walk = bool(request.GET['walk'])
-    
-    if method == 'text':
-        letters = ' '.join(recognize_text(url))
+    walk = False
+    print(request.GET['walk'], bool(int(request.GET['walk'])))
+    if method == 'Text':
+        letters = ' '.join(recognize_text(url, text_recognizer))
     else:
         char_imgs = segment_char(url, walk=walk)    
         letters = ''
         for mnist_like in char_imgs:
-            if method=='character':
+            if method=='Character':
                 pred = char_recognizer.recognize_char(mnist_like)
-                letters += recognizer.prediction_to_char(pred)
-            elif method=='digit':
+                letters += char_recognizer.prediction_to_char(pred)
+            elif method=='Digit':
                 pred = char_recognizer.recognize_digit(mnist_like)
-                letters += recognizer.prediction_to_char(pred)
+                letters += char_recognizer.prediction_to_char(pred)
             
     data={
         'url': url,

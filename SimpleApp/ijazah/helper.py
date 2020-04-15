@@ -6,7 +6,7 @@ from ijazahpy.preprocessing import crop_ijazah
 from ijazahpy.preprocessing import to_mnist_ar
 from ijazahpy.preprocessing import remove_noise_bin
 from ijazahpy.preprocessing import prepare_ws_image
-from ijazahpy.preprocessing import prepare_text_image
+from ijazahpy.preprocessing import prepare_for_tr
 from ijazahpy.segmentation import DotsSegmentation
 from ijazahpy.segmentation import WordSegmentation
 from ijazahpy.segmentation import segment_characters
@@ -55,20 +55,38 @@ def segment_char(url, walk=False):
             continue
     return res
 
+def segment_word(url):
+    ws = WordSegmentation()
+    img = cv2.imread(url[1:], cv2.IMREAD_GRAYSCALE)
+    prepared_img = prepare_ws_image(img, 50)
+    words = ws.segment(img)
+
+    return words
+
 def recognize_text(url, tr):
-    word = WordSegmentation()
+    ws = WordSegmentation()
     img = cv2.imread(url[1:], cv2.IMREAD_GRAYSCALE)
     
     prepared_img = prepare_ws_image(img, 50)
-    words = ws.segment(img)
+    _, prepared_img = cv2.threshold(prepared_img, 
+                                128, 
+                                255, 
+                                cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
+    prepared_img = remove_noise_bin(prepared_img, 30)
+    prepared_img = cv2.subtract(255,prepared_img)
+    
+    words = ws.segment(prepared_img)
 
     res = []
     for entry in words:
         curr_box, curr_img = entry
-        curr_img = remove_noise_bin(curr_img, 10)
+
+        curr_img = cv2.subtract(255,curr_img)
+
         if curr_img.shape[0] < 40 and curr_img.shape[1] < 40:
             continue
-        curr_img = prepare_text_image(curr_img, thresh=False)
+        
+        curr_img = prepare_for_tr(curr_img, thresh=False)
         res.append(tr.recognize(curr_img))
         
     return res
