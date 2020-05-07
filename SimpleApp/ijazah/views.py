@@ -3,8 +3,8 @@ from django.http import HttpResponse
 from django.core.files.storage import FileSystemStorage
 from django.conf import settings
 
-from .helper import decode_file, crop, segment, numpy_to_djfile, segment_char,recognize_text
-from .helper import segment_word
+from .helper import *
+
 from ijazahpy.pretrained import CharacterRecognizer, TextRecognizer
 from ijazahpy.preprocessing import crop_ijazah, remove_noise_bin, prepare_for_tr
 import json
@@ -16,23 +16,26 @@ text_recognizer = TextRecognizer()
 def index(request):
     if request.method == 'POST' and request.FILES['gambar']:
         file = request.FILES['gambar']
-        
+
+        # decodes a file to a color image
         img = decode_file(file)
         img = crop_ijazah(img)
-        segmented_imgs = segment(img)
+        entries = segment_dot_ijazah(img)
 
-        urls = []
-        for i, img in enumerate(segmented_imgs):
+        res = []
+        for i, entry in enumerate(entries):
+            img = entry[0]
+            predicted_label = entry[1]
             djfile = numpy_to_djfile(img, file)
             
             fs = FileSystemStorage()
             filename = fs.save(str(i)+file.name, djfile)
             uploaded_file_url = fs.url(filename)
-            urls.append(uploaded_file_url)
+            res.append((uploaded_file_url, predicted_label))
             
         return render(request,
                       'ijazah/index.html',
-                      {'segmented_image_urls': urls})
+                      {'entries': res})
     
     return render(request, 'ijazah/index.html')
 
@@ -41,6 +44,7 @@ def recognize(request):
     method = request.GET['method']
     walk = False
     print(request.GET['walk'], bool(int(request.GET['walk'])))
+    
     if method == 'Text':
         letters = ' '.join(recognize_text(url, text_recognizer))
     else:

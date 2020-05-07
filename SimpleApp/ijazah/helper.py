@@ -1,9 +1,15 @@
+from io import BytesIO
+import string
 import numpy as np
 import cv2
 from PIL import Image
 
+from django.core.files.uploadedfile import InMemoryUploadedFile
+
+from tensorflow.keras.models import load_model
+
 from ijazahpy.preprocessing import crop_ijazah
-from ijazahpy.preprocessing import to_mnist_ar
+from ijazahpy.preprocessing import to_mnist_ar, to_mnist
 from ijazahpy.preprocessing import remove_noise_bin
 from ijazahpy.preprocessing import prepare_ws_image
 from ijazahpy.preprocessing import prepare_for_tr
@@ -11,13 +17,9 @@ from ijazahpy.segmentation import DotsSegmentation
 from ijazahpy.segmentation import WordSegmentation
 from ijazahpy.segmentation import segment_characters
 
-from django.core.files.uploadedfile import InMemoryUploadedFile
-
-from io import BytesIO
-
 def decode_file(file):
     return cv2.imdecode(np.fromstring(file.read(), np.uint8),
-                        cv2.IMREAD_GRAYSCALE)
+                        cv2.IMREAD_COLOR)
 
 def numpy_to_djfile(img_array, file=None):
     pil_img = Image.fromarray(img_array)
@@ -27,18 +29,45 @@ def numpy_to_djfile(img_array, file=None):
     return file_
 
 def crop(img):
-    return  crop_ijazah(img)
+    return crop_ijazah(img)
 
-def segment(og, val=47):
+def segment_dot_ijazah(og, val=47):
     img = og.copy()
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    
     dot = DotsSegmentation(rlsa_val=val)
 
-    rects = dot.segment(img)
+    rects = dot.segment(gray)
     segmented_imgs = []
+    model = load_model('trained_models/engchars-sgd-100-90.h5')
     for i, rect in enumerate(rects):
         x,y,w,h = rect
-        segmented_img = img[y:y+h, x:x+w]
-        segmented_imgs.append(segmented_img)
+        segmented_img = gray[y:y+h, x:x+w]
+        label = ''
+
+        # get label
+        if x > 200 and x < 400:
+            # from colored image to detailEnhance process.
+            label_img = img[y:y+h+10, 0:x]
+            
+            label_img = cv2.cvtColor(cv2.detailEnhance(label_img, sigma_s=10, sigma_r=0.15),
+                                     cv2.COLOR_BGR2GRAY)
+            
+            chars = segment_characters(label_img)
+            test_set = []
+            for j, entry in enumerate(chars):
+                box, char_img = entry[0], entry[1]
+                mnist_like = to_mnist(char_img, aspect_ratio=False)
+                
+                test_set.append(mnist_like)
+
+            test_set = np.asarray(test_set).reshape(-1, 28, 28, 1)
+            predicted_y = model.predict(test_set)
+        
+            for prediction in predicted_y:
+                label += string.ascii_letters[prediction.argmax()]
+            
+        segmented_imgs.append((segmented_img, label))
 
     return segmented_imgs
 
@@ -90,3 +119,13 @@ def recognize_text(url, tr):
         res.append(tr.recognize(curr_img))
         
     return res
+
+if __name__ == '__main__':
+    print(cv2.__version__)
+    img = cv2.imread('G:\\Kuliah\\skripsi\\Project\\Ijazah\\random7.jpg')
+    
+    entries = segment_dot_ijazah(crop_ijazah(img))
+    for e in entries:
+        word = e[1]
+        if word != '':
+            print(word)

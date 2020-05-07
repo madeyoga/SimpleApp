@@ -46,14 +46,14 @@
     </div>
 
     <!-- Content Row -->
-    {% if segmented_image_urls %}
+    {% if entries %}
       <div class='row'>
-        {% for url in segmented_image_urls %}
+        {% for url, label in entries %}
           <div class="col-md-12 mb-5">
             <div class="card h-100">
               <div class="card-body">
                 <img class="card-img-top" src="{{url}}" style="object-fit: cover;">
-                <h2 class="card-title">Card One</h2>
+                <h2 class="card-title">{{label}}</h2>
                 <p class="card-text">Lorem ipsum dolor sit amet, consectetur adipisicing elit. Rem magni quas ex numquam, maxime minus quam molestias corporis quod, ea minima accusamus.</p>
                 <div class='row'>
                   <div class='col-md-2'>
