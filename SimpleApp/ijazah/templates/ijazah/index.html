@@ -15,7 +15,11 @@
     <!-- Heading Row -->
     <div class="row align-items-center my-5">
       <div class="col-lg-7" style="text-align: center;">
+        {% if main_file_url %}
+        <img id='preview-ijazah' style= 'width: 650px; height: 450px' class="img-fluid rounded mb-4 mb-lg-0" src="{{main_file_url}}" alt="">
+        {% else %}
         <img id='preview-ijazah' style= 'width: 425px; height: 550px' class="img-fluid rounded mb-4 mb-lg-0" src="http://placehold.it/425x550" alt="">
+        {% endif %}
       </div>
       <!-- /.col-lg-8 -->
       <div class="col-lg-5">
@@ -62,6 +66,7 @@
                       <option type="button">Digit</option>
                       <option type="button">Character</option>
                       <option type="button">Text</option>
+                      <option type="button">Tesseract</option>
                     </select>
                   </div>
                   <div class='col-md-2'>
@@ -71,9 +76,18 @@
                       <option type="button">1</option>
                     </select>
                   </div>
-                  <div class='col-md-2'>
+                  <!-- <div class='col-md-2'>
+                    <h5>Morphology Transformation</h5>
+                    <select id="walk-{{url}}" aria-labelledby="dropdownMenu2">
+                      <option type="button">CLOSE</option>
+                      <option type="button">OPEN</option>
+                      <option type="button">DILATE</option>
+                      <option type="button">ERODE</option>
+                    </select>
+                  </div> -->
+                  <div class='col-md-8'>
                     <h5>Result</h5>
-                    <input id='res-{{url}}' type="text" name="result-{{url}}" disabled>
+                    <input id='res-{{url}}' type="text" name="result-{{url}}" size='50' zdisabled>
                   </div>
                 </div>
               </div>

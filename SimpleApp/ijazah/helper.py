@@ -13,9 +13,13 @@ from ijazahpy.preprocessing import to_mnist_ar, to_mnist
 from ijazahpy.preprocessing import remove_noise_bin
 from ijazahpy.preprocessing import prepare_ws_image
 from ijazahpy.preprocessing import prepare_for_tr
+from ijazahpy.preprocessing import preprocess_for_tesseract
 from ijazahpy.segmentation import DotsSegmentation
 from ijazahpy.segmentation import WordSegmentation
 from ijazahpy.segmentation import segment_characters
+from ijazahpy.unit_test import process_label
+
+import pytesseract
 
 def decode_file(file):
     return cv2.imdecode(np.fromstring(file.read(), np.uint8),
@@ -45,10 +49,12 @@ def segment_dot_ijazah(og, val=47):
         segmented_img = gray[y:y+h, x:x+w]
         label = ''
 
+        cv2.rectangle(img, (x,y), (x+w,y+h), (255, 0, 0), 2)
+        
         # get label
         if x > 200 and x < 400:
-            # from colored image to detailEnhance process.
-            label_img = img[y:y+h+10, 0:x]
+            # segment from colored image. for detailEnhance process.
+            label_img = og[y:y+h+10, 0:x]
             
             label_img = cv2.cvtColor(cv2.detailEnhance(label_img, sigma_s=10, sigma_r=0.15),
                                      cv2.COLOR_BGR2GRAY)
@@ -66,10 +72,12 @@ def segment_dot_ijazah(og, val=47):
         
             for prediction in predicted_y:
                 label += string.ascii_letters[prediction.argmax()]
-            
-        segmented_imgs.append((segmented_img, label))
+                
+        segmented_imgs.append((segmented_img,
+                               process_label(label, metrics='ratio', tolerance=0.4),
+                               rect))
 
-    return segmented_imgs
+    return img, segmented_imgs
 
 def segment_char(url, walk=False):
     img = cv2.imread(url[1:], cv2.IMREAD_GRAYSCALE)
@@ -120,9 +128,14 @@ def recognize_text(url, tr):
         
     return res
 
+def recognize_with_tesseract(url):
+    img = cv2.imread(url[1:], cv2.IMREAD_GRAYSCALE)
+    return pytesseract.image_to_string(
+        preprocess_for_tesseract(img), config='--psm 7')
+
 if __name__ == '__main__':
     print(cv2.__version__)
-    img = cv2.imread('G:\\Kuliah\\skripsi\\Project\\Ijazah\\random7.jpg')
+    img = cv2.imread('G:\\Kuliah\\skripsi\\Project\\Ijazah\\ijazah3.jpg')
     
     entries = segment_dot_ijazah(crop_ijazah(img))
     for e in entries:

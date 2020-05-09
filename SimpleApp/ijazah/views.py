@@ -7,6 +7,7 @@ from .helper import *
 
 from ijazahpy.pretrained import CharacterRecognizer, TextRecognizer
 from ijazahpy.preprocessing import crop_ijazah, remove_noise_bin, prepare_for_tr
+
 import json
 
 char_recognizer = CharacterRecognizer()
@@ -20,22 +21,26 @@ def index(request):
         # decodes a file to a color image
         img = decode_file(file)
         img = crop_ijazah(img)
-        entries = segment_dot_ijazah(img)
+        
+        visual, entries = segment_dot_ijazah(img)
 
+        fs = FileSystemStorage()
+        filename = fs.save(file.name, numpy_to_djfile(visual, file))
+        main_file_url = fs.url(filename)
+        
         res = []
         for i, entry in enumerate(entries):
             img = entry[0]
             predicted_label = entry[1]
-            djfile = numpy_to_djfile(img, file)
+            (x,y,w,h) = entry[2]
             
-            fs = FileSystemStorage()
-            filename = fs.save(str(i)+file.name, djfile)
+            filename = fs.save(str(i)+file.name, numpy_to_djfile(img, file))
             uploaded_file_url = fs.url(filename)
             res.append((uploaded_file_url, predicted_label))
             
         return render(request,
                       'ijazah/index.html',
-                      {'entries': res})
+                      {'entries': res, 'main_file_url': main_file_url})
     
     return render(request, 'ijazah/index.html')
 
@@ -47,6 +52,10 @@ def recognize(request):
     
     if method == 'Text':
         letters = ' '.join(recognize_text(url, text_recognizer))
+    elif method == 'Tesseract':
+        letters = recognize_with_tesseract(url)
+        if letters == '':
+            letters='~Unrecognized~'
     else:
         char_imgs = segment_char(url, walk=walk)    
         letters = ''
@@ -57,7 +66,7 @@ def recognize(request):
             elif method=='Digit':
                 pred = char_recognizer.recognize_digit(mnist_like)
                 letters += char_recognizer.prediction_to_char(pred)
-            
+    
     data={
         'url': url,
         'method': method,
