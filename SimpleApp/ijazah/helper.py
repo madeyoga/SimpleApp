@@ -35,13 +35,13 @@ def numpy_to_djfile(img_array, file=None):
 def crop(img):
     return crop_ijazah(img)
 
-def segment_dot_ijazah(og, val=47):
+def segment_dot_ijazah(og, val=47, dot_size=3, min_width=32):
     img = og.copy()
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     
     dot = DotsSegmentation(rlsa_val=val)
-
-    rects = dot.segment(gray)
+    
+    rects = dot.segment(gray, dot_size=dot_size, min_width=min_width)
     segmented_imgs = []
     model = load_model('trained_models/engchars-sgd-100-90.h5')
     for i, rect in enumerate(rects):

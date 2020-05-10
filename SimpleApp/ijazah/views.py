@@ -17,12 +17,20 @@ text_recognizer = TextRecognizer()
 def index(request):
     if request.method == 'POST' and request.FILES['gambar']:
         file = request.FILES['gambar']
+        rlsa_value = int(request.POST['rlsa-value'])
+        minimum_width = int(request.POST['minimum-width'])
+        dot_size = int(request.POST['dot-size'])
 
+        print(rlsa_value, minimum_width, dot_size)
+        
         # decodes a file to a color image
         img = decode_file(file)
         img = crop_ijazah(img)
         
-        visual, entries = segment_dot_ijazah(img)
+        visual, entries = segment_dot_ijazah(img,
+                                             val=rlsa_value,
+                                             dot_size=dot_size,
+                                             min_width=minimum_width)
 
         fs = FileSystemStorage()
         filename = fs.save(file.name, numpy_to_djfile(visual, file))
@@ -38,9 +46,17 @@ def index(request):
             uploaded_file_url = fs.url(filename)
             res.append((uploaded_file_url, predicted_label))
             
+        data = {
+            'entries': res,
+            'main_file_url': main_file_url,
+            'rlsa_value': rlsa_value,
+            'dot_size': dot_size,
+            'minimum_width': minimum_width
+            }
         return render(request,
                       'ijazah/index.html',
-                      {'entries': res, 'main_file_url': main_file_url})
+                      data
+                      )
     
     return render(request, 'ijazah/index.html')
 
